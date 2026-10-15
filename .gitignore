@@ -1,0 +1,5 @@
+result
+.direnv
+node_modules
+dist
+.DS_Store
