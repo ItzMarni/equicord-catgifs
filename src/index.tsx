@@ -3,7 +3,8 @@
 import { definePluginSettings } from '@api/Settings';
 import { Button } from '@components/Button';
 import { getIntlMessage } from '@utils/discord';
-import { findComponentByCodeLazy } from '@webpack';
+import { classes } from '@utils/misc';
+import { findComponentByCodeLazy, findCssClassesLazy } from '@webpack';
 import definePlugin, { OptionType } from '@utils/types';
 import { ExpressionPickerStore, React } from '@webpack/common';
 import type { ComponentType, ReactNode } from 'react';
@@ -15,6 +16,7 @@ const CATGIFS_VIEW = 'catgifs';
 const RESULT_WIDTH = 195;
 const RESULT_GAP = 12;
 const MAX_COLUMNS = 6;
+const ScrollerClasses = findCssClassesLazy('scrollbarGutterStable', 'thin', 'scrollerBase', 'fade');
 
 interface PositionedGif {
   url: string;
@@ -206,7 +208,15 @@ function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: string }) =
           {query.trim() ? 'No GIFs match your search.' : 'No GIFs available.'}
         </div>
       ) : (
-        <div className="catgifs-masonry-viewport">
+        <div
+          className={classes(
+            'catgifs-masonry-viewport',
+            ScrollerClasses.scrollbarGutterStable,
+            ScrollerClasses.thin,
+            ScrollerClasses.scrollerBase,
+            ScrollerClasses.fade,
+          )}
+        >
           <div
             ref={masonryRef}
             className="catgifs-masonry"
