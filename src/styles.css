@@ -56,3 +56,22 @@
     color: var(--text-muted);
     padding: 24px;
 }
+
+.catgifs-connection-setting {
+    display: grid;
+    gap: 8px;
+}
+
+.catgifs-connection-setting p {
+    margin: 0;
+}
+
+.catgifs-connection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.catgifs-connection-message {
+    color: var(--text-muted);
+}

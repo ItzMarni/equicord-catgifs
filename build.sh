@@ -11,9 +11,7 @@ if [[ ! -f "${EQUICORD_DIR}/package.json" || ! -d "${EQUICORD_DIR}/src" ]]; then
 fi
 
 mkdir -p "$PLUGIN_DIR"
-cp "$SCRIPT_DIR/src/index.tsx" "$PLUGIN_DIR/index.tsx"
-cp "$SCRIPT_DIR/src/native.ts" "$PLUGIN_DIR/native.ts"
-cp "$SCRIPT_DIR/src/styles.css" "$PLUGIN_DIR/styles.css"
+cp "$SCRIPT_DIR"/src/* "$PLUGIN_DIR"/
 printf 'Copied CatGIFs into %s\n' "$PLUGIN_DIR"
 
 cd "$EQUICORD_DIR"

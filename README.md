@@ -1,11 +1,25 @@
+# CatGIFs for Equicord
+
+Browse and search CatGIFs from Discord's GIF picker. Connect your account to submit GIFs for review.
+
 > [!IMPORTANT]
 > This project is AI-generated with OpenAI Codex. I cannot reliably review outside code contributions. Please open an issue for bugs or suggestions instead of opening a pull request.
 
-# CatGIFs for Equicord
+## Browse CatGIFs
+
+Open Discord's expression picker, choose **GIF**, then open the **CatGIFs** tab. Search for a GIF and select it to send.
+
+![Browsing CatGIFs in Discord](assets/catgifs-picker.gif)
+
+## Upload a GIF
+
+Connect in CatGIFs plugin settings and approve the request in your browser. Then right-click a GIF in Discord and choose **Upload to CatGIFs**. It will be added to the normal review queue.
+
+![Uploading a favorite GIF from Discord](assets/favorite-gif-upload.gif)
 
 Adds a **CatGIFs** tab to Discord's existing Emoji, GIF, and Sticker picker. It uses the picker's search box and displays GIFs in responsive masonry columns, selecting them through Discord's normal GIF callback.
 
-The **API Endpoint** setting defaults to `https://catgifs.marni.cc/api/gifs` and expects a JSON array of GIF URLs. Changing the endpoint requires restarting Equibop so its host can be added to the content security policy.
+The **API Base URL** setting defaults to `https://catgifs.marni.cc`; the plugin loads the GIF library from `/api/gifs` on that server. Changing the base URL requires restarting Equibop so its host can be added to the content security policy.
 
 ## Scope and support
 
