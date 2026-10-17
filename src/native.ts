@@ -8,7 +8,7 @@ const DEFAULT_ENDPOINT = 'https://catgifs.marni.cc';
 const MAX_MEDIA_BYTES = 24 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT = 30_000;
-const apiEndpoint = RendererSettings.store.plugins.CatGIFs?.apiEndpoint ?? DEFAULT_ENDPOINT;
+const apiEndpoint = RendererSettings.store.plugins?.CatGIFs?.apiEndpoint ?? DEFAULT_ENDPOINT;
 
 CspPolicies['catgifs.marni.cc'] = ImageSrc;
 if (URL.canParse(apiEndpoint)) {

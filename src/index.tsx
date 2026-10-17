@@ -2,15 +2,14 @@
 
 import type { NavContextMenuPatchCallback } from '@api/ContextMenu';
 import * as DataStore from '@api/DataStore';
-import { getIntlMessage } from '@utils/discord';
+import ErrorBoundary from '@components/ErrorBoundary';
 import definePlugin, { PluginNative } from '@utils/types';
-import { Menu, React, showToast } from '@webpack/common';
-import type { ComponentType, ReactNode } from 'react';
+import { Menu, showToast, Toasts } from '@webpack/common';
+import type { ComponentType } from 'react';
 
 import { apiBase, uploadTokenKey } from './api';
-import type { ExpressionPickerTabProps } from './GifPicker';
 import { ConnectionSettings, settings } from './ConnectionSettings';
-import { CatGIFsPicker } from './GifPicker';
+import { CatGIFsPicker, type ExpressionPickerTabProps } from './GifPicker';
 import managedStyle from './styles.css?managed';
 
 const CATGIFS_VIEW = 'catgifs';
@@ -24,12 +23,12 @@ async function uploadGif(urlValue: string) {
   try {
     const base = apiBase(settings.store.apiEndpoint);
     if (!base) {
-      showToast('Set API Base URL to catgifs.marni.cc or a localhost address first.', 'failure');
+      showToast('Set API Base URL to catgifs.marni.cc or a localhost address first.', Toasts.Type.FAILURE);
       return;
     }
     const token = await DataStore.get<string>(uploadTokenKey(base));
     if (!token) {
-      showToast('Connect CatGIFs in Equicord plugin settings first.', 'failure');
+      showToast('Connect CatGIFs in Equicord plugin settings first.', Toasts.Type.FAILURE);
       return;
     }
     const source = new URL(urlValue);
@@ -44,7 +43,10 @@ async function uploadGif(urlValue: string) {
       );
     }
     const media = await Native.downloadGifMedia(source.href);
-    const fileName = media.fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'discord-gif.gif';
+    let fileName = media.fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'discord-gif.gif';
+    if (!/\.gif$/i.test(fileName) && media.contentType === 'image/gif') {
+      fileName += '.gif';
+    }
     const form = new FormData();
     form.append('file', new File([new Uint8Array(media.bytes)], fileName, { type: media.contentType }));
     const response = await fetch(new URL('/api/equicord/uploads', base), {
@@ -81,15 +83,89 @@ async function uploadGif(urlValue: string) {
 
 function notifyUpload(message: string, type: 'success' | 'failure') {
   try {
-    showToast(message, type);
+    showToast(message, type === 'success' ? Toasts.Type.SUCCESS : Toasts.Type.FAILURE);
   } catch (error) {
     console.error('[CatGIFs] Could not show upload notification:', error);
   }
 }
 
-const gifPickerContextMenu: NavContextMenuPatchCallback = (children, props: { src?: unknown; url?: unknown }) => {
-  const source = typeof props?.src === 'string' ? props.src : props?.url;
-  if (typeof source !== 'string' || !/^https?:\/\//i.test(source)) return;
+function getMediaSource(props: Record<string, unknown> | undefined): string | null {
+  if (!props) return null;
+
+  // Direct url / src properties (used in gif-picker, image-context, etc.)
+  for (const key of ['src', 'itemSrc', 'itemHref', 'url', 'href']) {
+    const val = props[key];
+    if (typeof val === 'string' && /^https?:\/\//i.test(val)) {
+      return val;
+    }
+  }
+
+  // Direct attachment (message context on attachment)
+  const attachment = props.attachment as { proxy_url?: string; url?: string } | undefined;
+  if (attachment) {
+    const url = attachment.proxy_url || attachment.url;
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+  }
+
+  // Target element (e.g. clicked <img> or <video> tag)
+  const target = props.target as {
+    classList?: { contains: (cls: string) => boolean };
+    src?: unknown;
+    closest?: (selector: string) => { src?: unknown; currentSrc?: unknown } | null;
+    querySelector?: (selector: string) => { src?: unknown; currentSrc?: unknown } | null;
+  } | undefined;
+
+  if (target?.classList?.contains('emoji')) return null;
+
+  if (typeof target?.src === 'string' && /^https?:\/\//i.test(target.src)) {
+    return target.src;
+  }
+
+  const mediaEl = target?.closest?.('img, video') || target?.querySelector?.('img, video');
+  const mediaSrc = mediaEl?.currentSrc || mediaEl?.src;
+  if (typeof mediaSrc === 'string' && /^https?:\/\//i.test(mediaSrc)) {
+    return mediaSrc;
+  }
+
+  // Message attachments & embeds (when right-clicking a message)
+  const message = props.message as {
+    attachments?: Array<{ proxy_url?: string; url?: string; content_type?: string }>;
+    embeds?: Array<{
+      video?: { proxyURL?: string; url?: string };
+      image?: { proxyURL?: string; url?: string };
+      thumbnail?: { proxyURL?: string; url?: string };
+    }>;
+  } | undefined;
+
+  if (message) {
+    if (Array.isArray(message.attachments) && message.attachments.length > 0) {
+      const gifAttachment = message.attachments.find(a =>
+        a.content_type?.includes('gif') || /\.gif([?#]|$)/i.test(a.url || '') || /\.gif([?#]|$)/i.test(a.proxy_url || '')
+      ) ?? message.attachments[0];
+
+      const url = gifAttachment?.proxy_url || gifAttachment?.url;
+      if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+    }
+
+    if (Array.isArray(message.embeds)) {
+      for (const embed of message.embeds) {
+        const img = embed.image || embed.thumbnail;
+        const video = embed.video;
+        const url = img?.proxyURL || img?.url || video?.proxyURL || video?.url;
+        if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+      }
+    }
+  }
+
+  return null;
+}
+
+const uploadContextMenuPatch: NavContextMenuPatchCallback = (children, props?: Record<string, unknown>) => {
+  const source = getMediaSource(props);
+  if (!source) return;
+
+  if (children.some(child => child?.props?.id === 'catgifs-upload-gif')) return;
+
   children.push(
     <Menu.MenuItem
       id="catgifs-upload-gif"
@@ -100,6 +176,8 @@ const gifPickerContextMenu: NavContextMenuPatchCallback = (children, props: { sr
   );
 };
 
+const SafeCatGIFsPicker = ErrorBoundary.wrap(CatGIFsPicker, { noop: true });
+
 export default definePlugin({
   name: 'CatGIFs',
   description: 'Add GIFs from a custom endpoint to the expression picker.',
@@ -109,7 +187,10 @@ export default definePlugin({
   settings,
   managedStyle,
   contextMenus: {
-    'gif-picker': gifPickerContextMenu,
+    'gif-picker': uploadContextMenuPatch,
+    'image-context': uploadContextMenuPatch,
+    'message': uploadContextMenuPatch,
+    'attachment-link-context': uploadContextMenuPatch,
   },
 
   patches: [
@@ -117,46 +198,33 @@ export default definePlugin({
       find: '#{intl::EXPRESSION_PICKER_CATEGORIES_A11Y_LABEL}',
       replacement: [
         {
-          match:
-            /\(0,\i\.jsx\)\((\i),[^}]{20,40}?"aria-selected":(\i)[^}]{50,100}?#{intl::EXPRESSION_PICKER_GIF}\)\}\)/,
-          replace: '$self.renderTabs($1,$2)',
+          match: /(children:\[[^[\]]{0,80},)(?=\i&&\i&&\(0,\i\.jsx\)\((\i),\{id:\i\.\i,"aria-controls":\i\.\i,"aria-selected":(\i)===\i\.\i\.SOUNDBOARD)/,
+          replace: '$1$self.renderCatTab($2,$3),',
         },
         {
-          match: /\{onSelectGIF:(\i),[^}]{20,40}\}\):null,(?=(\i)===)/,
-          replace: '$&$self.renderCatGIFsPicker($2,$1),',
+          match: /(\i)===\i\.\i\.GIF&&\i\?\(0,\i\.jsx\)\(\i(?:\.\i)?,\{onSelectGIF:(\i),hideFavorites:\i,persistSearch:!0\}\):null,/,
+          replace: '$&$1==="catgifs"?$self.renderCatGIFsPicker($2):null,',
         },
       ],
     },
   ],
 
-  renderTabs(Tab: ComponentType<ExpressionPickerTabProps>, activeView: string) {
+  renderCatTab(Tab: ComponentType<ExpressionPickerTabProps>, activeView: string) {
     return (
-      <>
-        <Tab
-          id="gif-picker-tab"
-          key="gif-picker-tab"
-          aria-controls="gif-picker-tab-panel"
-          aria-selected={activeView === 'gif'}
-          isActive={activeView === 'gif'}
-          viewType="gif"
-        >
-          {getIntlMessage('EXPRESSION_PICKER_GIF')}
-        </Tab>
-        <Tab
-          id="catgifs-picker-tab"
-          key="catgifs-picker-tab"
-          aria-controls="catgifs-picker-tab-panel"
-          aria-selected={activeView === CATGIFS_VIEW}
-          isActive={activeView === CATGIFS_VIEW}
-          viewType={CATGIFS_VIEW}
-        >
-          CatGIFs
-        </Tab>
-      </>
+      <Tab
+        id="catgifs-picker-tab"
+        key="catgifs-picker-tab"
+        aria-controls="catgifs-picker-tab-panel"
+        aria-selected={activeView === CATGIFS_VIEW}
+        isActive={activeView === CATGIFS_VIEW}
+        viewType={CATGIFS_VIEW}
+      >
+        CatGIFs
+      </Tab>
     );
   },
 
-  renderCatGIFsPicker(activeView: string, onSelectGIF: (item: { url: string }) => void) {
-    return activeView === CATGIFS_VIEW ? <CatGIFsPicker onSelectGIF={onSelectGIF} /> : null;
+  renderCatGIFsPicker(onSelectGIF: (item: { url: string }) => void) {
+    return <SafeCatGIFsPicker onSelectGIF={onSelectGIF} />;
   },
 });

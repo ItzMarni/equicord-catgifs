@@ -4,7 +4,7 @@ import { Button } from '@components/Button';
 import { classes } from '@utils/misc';
 import { findComponentByCodeLazy, findCssClassesLazy } from '@webpack';
 import { ExpressionPickerStore, React } from '@webpack/common';
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { getEndpoint, normalizeGifUrl } from './api';
 import { settings } from './ConnectionSettings';
@@ -38,6 +38,14 @@ function gifName(url: string) {
     .slice(url.lastIndexOf('/') + 1)
     .replace(/\.gif$/i, '')
     .replace(/[-_]/g, ' ');
+}
+
+interface PositionedGif {
+  url: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: string }) => void }) {
