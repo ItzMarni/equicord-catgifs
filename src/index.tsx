@@ -4,7 +4,7 @@ import type { NavContextMenuPatchCallback } from '@api/ContextMenu';
 import * as DataStore from '@api/DataStore';
 import ErrorBoundary from '@components/ErrorBoundary';
 import definePlugin, { PluginNative } from '@utils/types';
-import { Menu, showToast, Toasts } from '@webpack/common';
+import { Menu, showToast } from '@webpack/common';
 import type { ComponentType } from 'react';
 
 import { apiBase, uploadTokenKey } from './api';
@@ -23,12 +23,12 @@ async function uploadGif(urlValue: string) {
   try {
     const base = apiBase(settings.store.apiEndpoint);
     if (!base) {
-      showToast('Set API Base URL to catgifs.marni.cc or a localhost address first.', Toasts.Type.FAILURE);
+      showToast('Set API Base URL to catgifs.marni.cc or a localhost address first.', 'failure');
       return;
     }
     const token = await DataStore.get<string>(uploadTokenKey(base));
     if (!token) {
-      showToast('Connect CatGIFs in Equicord plugin settings first.', Toasts.Type.FAILURE);
+      showToast('Connect CatGIFs in Equicord plugin settings first.', 'failure');
       return;
     }
     const source = new URL(urlValue);
@@ -83,7 +83,7 @@ async function uploadGif(urlValue: string) {
 
 function notifyUpload(message: string, type: 'success' | 'failure') {
   try {
-    showToast(message, type === 'success' ? Toasts.Type.SUCCESS : Toasts.Type.FAILURE);
+    showToast(message, type);
   } catch (error) {
     console.error('[CatGIFs] Could not show upload notification:', error);
   }
