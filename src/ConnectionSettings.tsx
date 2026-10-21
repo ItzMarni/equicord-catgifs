@@ -12,6 +12,11 @@ const DEFAULT_ENDPOINT = 'https://catgifs.marni.cc';
 const API_ENDPOINT_SETTING = ['apiEndpoint'] as const;
 
 export const settings = definePluginSettings({
+  keepPickerOpen: {
+    type: OptionType.BOOLEAN,
+    description: 'Keep the CatGIFs picker open after sending a GIF.',
+    default: false,
+  },
   apiEndpoint: {
     type: OptionType.STRING,
     displayName: 'API Base URL',
