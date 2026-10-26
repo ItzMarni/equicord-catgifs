@@ -4,7 +4,7 @@ import { Button } from '@components/Button';
 import { classes } from '@utils/misc';
 import { findComponentByCodeLazy, findCssClassesLazy } from '@webpack';
 import { ExpressionPickerStore, React } from '@webpack/common';
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { getEndpoint, normalizeGifUrl } from './api';
 import { settings } from './ConnectionSettings';
@@ -12,6 +12,7 @@ import { settings } from './ConnectionSettings';
 const RESULT_WIDTH = 195;
 const RESULT_GAP = 12;
 const MAX_COLUMNS = 6;
+const PICKER_SETTINGS: ('apiEndpoint' | 'keepPickerOpen')[] = ['apiEndpoint', 'keepPickerOpen'];
 const ScrollerClasses = findCssClassesLazy('scrollbarGutterStable', 'thin', 'scrollerBase', 'fade');
 
 export interface ExpressionPickerTabProps {
@@ -40,15 +41,26 @@ function gifName(url: string) {
     .replace(/[-_]/g, ' ');
 }
 
+interface PositionedGif {
+  url: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: string }) => void }) {
-  const { apiEndpoint } = settings.use(['apiEndpoint']);
+  const { apiEndpoint, keepPickerOpen } = settings.use(PICKER_SETTINGS);
   const query = ExpressionPickerStore.useExpressionPickerStore((store) => store.searchQuery);
+  const activeViewType = ExpressionPickerStore.useExpressionPickerStore((store) => store.activeViewType);
+  const activeChannelId = ExpressionPickerStore.useExpressionPickerStore((store) => store.activeChannelId);
   const [gifs, setGifs] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refresh, setRefresh] = React.useState(0);
   const [masonryWidth, setMasonryWidth] = React.useState(0);
   const [aspectRatios, setAspectRatios] = React.useState<Record<string, number>>({});
+  const viewportRef = React.useRef<HTMLDivElement>(null);
   const masonryRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -135,6 +147,19 @@ export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: stri
 
   const handleSearch = React.useCallback((value: string) => ExpressionPickerStore.setSearchQuery(value), []);
   const clearSearch = React.useCallback(() => ExpressionPickerStore.setSearchQuery(''), []);
+  const selectGIF = (url: string) => {
+    const scrollTop = viewportRef.current?.scrollTop;
+    onSelectGIF({ url });
+    if (keepPickerOpen) {
+      ExpressionPickerStore.openExpressionPicker('catgifs', activeViewType, activeChannelId ?? undefined);
+      if (scrollTop !== undefined) {
+        const restoreScroll = () => viewportRef.current?.scrollTo({ top: scrollTop });
+        restoreScroll();
+        requestAnimationFrame(restoreScroll);
+        setTimeout(restoreScroll, 50);
+      }
+    }
+  };
 
   return (
     <div id="catgifs-picker-tab-panel" role="tabpanel" aria-labelledby="catgifs-picker-tab" className="catgifs-picker">
@@ -165,6 +190,7 @@ export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: stri
         </div>
       ) : (
         <div
+          ref={viewportRef}
           className={classes(
             'catgifs-masonry-viewport',
             ScrollerClasses.scrollbarGutterStable,
@@ -189,7 +215,10 @@ export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: stri
                 style={{ left, top, width, height }}
                 aria-label={`Send ${gifName(url)}`}
                 title={`Send ${gifName(url)}`}
-                onClick={() => onSelectGIF({ url })}
+                onMouseDown={(event) => {
+                  if (event.button === 0) event.preventDefault();
+                }}
+                onClick={() => selectGIF(url)}
               >
                 <img
                   src={url}
