@@ -135,3 +135,8 @@ The client mod writes its Chromium extension, Firefox extension, and userscript 
 ## Project scope
 
 This repository contains the GPL-3.0-or-later client plugin and browser extension. The CatGIFs API and website are separate projects. CatGIFs is not affiliated with Discord, Vencord, Equicord, Vesktop, or Equibop.
+
+## Credits
+
+- [Marni](https://github.com/ItzMarni) created CatGIFs and the original plugin.
+- The [Vencord](https://github.com/Vendicated/Vencord) and [Equicord](https://github.com/Equicord/Equicord) contributors maintain the client mods and APIs this plugin uses.
