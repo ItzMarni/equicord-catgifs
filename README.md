@@ -2,6 +2,9 @@
 
 CatGIFs adds a CatGIFs tab to Discord's GIF picker. You can search the library, send GIFs, copy GIF links, and submit GIFs for review.
 
+> [!IMPORTANT]
+> This project is AI-generated with OpenAI Codex. I cannot reliably review outside code contributions. Please open an issue for bugs or suggestions instead of opening a pull request.
+
 ## Features
 
 - Search and send CatGIFs from Discord's GIF picker.
@@ -54,7 +57,7 @@ Open PowerShell as your normal user. Do not use an administrator window.
 
 ```powershell
 git clone https://github.com/Equicord/Equicord.git
-git clone https://github.com/aboveproof/equicord-catgifs.git
+git clone https://github.com/ItzMarni/equicord-catgifs.git
 
 cd Equicord
 corepack pnpm install --frozen-lockfile
@@ -76,7 +79,7 @@ Run these commands in a terminal:
 
 ```sh
 git clone https://github.com/Equicord/Equicord.git
-git clone https://github.com/aboveproof/equicord-catgifs.git
+git clone https://github.com/ItzMarni/equicord-catgifs.git
 
 cd Equicord
 corepack pnpm install --frozen-lockfile
