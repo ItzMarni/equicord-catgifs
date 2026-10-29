@@ -139,4 +139,5 @@ This repository contains the GPL-3.0-or-later client plugin and browser extensio
 ## Credits
 
 - [Marni](https://github.com/ItzMarni) created CatGIFs and the original plugin.
+- [aboveproof](https://github.com/aboveproof) continued development, added new features and client support, and maintains the documentation and browser uploader.
 - The [Vencord](https://github.com/Vendicated/Vencord) and [Equicord](https://github.com/Equicord/Equicord) contributors maintain the client mods and APIs this plugin uses.
