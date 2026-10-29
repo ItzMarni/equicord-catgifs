@@ -1,56 +1,143 @@
-# CatGIFs for Equicord
+# CatGIFs for Vencord and Equicord
 
-Browse and search CatGIFs from Discord's GIF picker. Connect your account to submit GIFs for review.
+CatGIFs adds a CatGIFs tab to Discord's GIF picker. You can search the library, send GIFs, copy GIF links, and submit GIFs for review.
 
 > [!IMPORTANT]
 > This project is AI-generated with OpenAI Codex. I cannot reliably review outside code contributions. Please open an issue for bugs or suggestions instead of opening a pull request.
 
-## Browse CatGIFs
+## Features
 
-Open Discord's expression picker, choose **GIF**, then open the **CatGIFs** tab. Search for a GIF and select it to send.
+- Search and send CatGIFs from Discord's GIF picker.
+- Right-click a CatGIFs result and choose **Copy GIF Link**.
+- Submit a GIF from Discord on supported client builds.
+- Submit images from Chrome, Edge, or Firefox with the browser uploader.
 
 ![Browsing CatGIFs in Discord](assets/catgifs-picker.gif)
 
-## Upload a GIF
+## Client support
 
-Connect in CatGIFs plugin settings and approve the request in your browser. Then right-click a GIF in Discord and choose **Upload to CatGIFs**. It will be added to the normal review queue.
+| Client build | Browse, search, send, and copy | Upload from Discord |
+| --- | --- | --- |
+| Equicord or Vencord injected into Discord Desktop | Yes | Yes |
+| Equibop or Vesktop using a local `dist` build | Yes | Yes |
+| Equicord or Vencord browser extension | Yes | Yes |
+| Userscript | Yes | Yes |
+| Standalone web build | Yes | Yes, when the image host allows browser access. |
+| Discord without Equicord or Vencord | No | No |
 
-![Uploading a favorite GIF from Discord](assets/favorite-gif-upload.gif)
+Desktop builds use the native media downloader. Browser extension builds add a background download bridge, and the userscript uses its privileged request helper. Standalone web builds use the browser directly, so the image host must allow cross-origin requests. The build scripts apply the browser bridge automatically.
 
-Adds a **CatGIFs** tab to Discord's existing Emoji, GIF, and Sticker picker. It uses the picker's search box and displays GIFs in responsive masonry columns, selecting them through Discord's normal GIF callback.
+## Connect CatGIFs
 
-The **API Base URL** setting defaults to `https://catgifs.marni.cc`; the plugin loads the GIF library from `/api/gifs` on that server. Changing the base URL requires restarting Equibop so its host can be added to the content security policy.
+Open CatGIFs in the plugin settings and select **Connect to CatGIFs**. Approve the device in the browser window. CatGIFs stores the device token in the client's DataStore.
 
-## Scope and support
+Supported client builds add **Upload to CatGIFs** to Discord's GIF context menu. The server places each upload in the review queue.
 
-This repository contains the open-source client plugin, licensed under GPL-3.0-or-later. The CatGIFs API and website are closed source and are not included here.
+![Uploading a GIF from Discord](assets/favorite-gif-upload.gif)
 
-The plugin targets Equicord. Vencord and other clients are not tested or supported. This project is not affiliated with or supported by Vencord, Equicord, Discord, or Equibop. Please do not contact their support teams or communities about this plugin. Plugin-specific bug reports can be opened here, but support and compatibility fixes are not guaranteed.
+## Browser uploader
 
-## Development
+The [`extension`](extension) directory contains the CatGIFs browser uploader. After you connect it, right-click an image and choose **Upload to CatGIFs**.
 
-I develop this on NixOS, and these instructions cover my Nix setup. If you use Windows or another environment, you are welcome to adapt them, but figuring out your setup is on you; I do not provide platform-specific setup or troubleshooting.
+The extension includes separate Manifest V3 packages for Chromium and Firefox. See [the browser extension guide](extension/README.md) for installation and permission details.
 
-With an Equicord checkout next to this directory:
+## Build the plugin
 
-```sh
-nix develop -c ./build.sh
+You need Git, Node.js 22 or newer, and Corepack. Clone this repository next to an Equicord or Vencord source checkout. Install the client checkout's dependencies before running the CatGIFs build script.
+
+The scripts copy every file in `src` to `src/userplugins/catgifs`. Web builds also add the download bridge to the client's Chromium and Firefox extension files. The bridge requests access only to CatGIFs, Discord's media hosts, Tenor, and Giphy. The scripts accept these targets:
+
+- `desktop` builds Discord Desktop and Vesktop/Equibop bundles. This is the default.
+- `web` builds the client mod's browser extensions and userscript.
+- `all` builds both sets.
+
+### Windows
+
+Open PowerShell as your normal user. Do not use an administrator window.
+
+```powershell
+git clone https://github.com/Equicord/Equicord.git
+git clone https://github.com/ItzMarni/equicord-catgifs.git
+
+cd Equicord
+corepack pnpm install --frozen-lockfile
+
+cd ..\equicord-catgifs
+.\build.ps1 all
 ```
 
-By default, `build.sh` looks for Equicord in `../Equicord`. Set `EQUICORD_DIR` to use another checkout:
+For Vencord, clone `https://github.com/Vendicated/Vencord.git` in place of Equicord. If the client checkout is not beside this repository, set its path before building:
+
+```powershell
+$env:CLIENT_DIR = "C:\path\to\Vencord"
+.\build.ps1 all
+```
+
+### Linux and macOS
+
+Run these commands in a terminal:
+
+```sh
+git clone https://github.com/Equicord/Equicord.git
+git clone https://github.com/ItzMarni/equicord-catgifs.git
+
+cd Equicord
+corepack pnpm install --frozen-lockfile
+
+cd ../equicord-catgifs
+./build.sh all
+```
+
+For Vencord, clone `https://github.com/Vendicated/Vencord.git` in place of Equicord. Set `CLIENT_DIR` when the checkout lives elsewhere:
+
+```sh
+CLIENT_DIR=/path/to/Vencord ./build.sh all
+```
+
+### NixOS
+
+The flake supplies Node.js, Corepack, and Git:
 
 ```sh
 nix develop
-EQUICORD_DIR=/path/to/Equicord ./build.sh
+cd ../Equicord
+corepack pnpm install --frozen-lockfile
+cd ../equicord-catgifs
+./build.sh all
 ```
 
-The script copies the plugin files into Equicord's `src/userplugins/catgifs` directory, then builds Equicord's development bundle. If dependencies are missing, install them from the Equicord checkout first:
+Set `CLIENT_DIR` as shown above when you use another checkout path.
+
+## Install the client build
+
+### Discord Desktop
+
+Run the injector from the Equicord or Vencord checkout:
 
 ```sh
-cd /path/to/Equicord
-corepack pnpm install --frozen-lockfile
+corepack pnpm inject
 ```
 
-## Load it in Equibop
+Select the Discord release you use, then restart Discord.
 
-Open Equibop settings, scroll to **Open Developer Settings**, then select the Equicord checkout's `dist` directory under **Equicord Location**. Fully quit and restart Equibop, then make sure CatGIFs is enabled in the plugin list.
+### Equibop or Vesktop
+
+Open the app's developer settings and set **Equicord Location** or **Vencord Location** to the client checkout's `dist` directory. Quit the app and open it again.
+
+### Browser extension or userscript build
+
+The client mod writes its Chromium extension, Firefox extension, and userscript to `dist` after a web build. Follow the [Vencord source installation guide](https://docs.vencord.dev/installing/) or the [Equicord devbuild guide](https://github.com/Equicord/Equicord#installing-equicord-devbuild) for the matching browser.
+
+## Settings
+
+**API Base URL** defaults to `https://catgifs.marni.cc`. The plugin also accepts a localhost server for development. Restart the client after changing the URL so the build can apply its content security policy.
+
+## Project scope
+
+This repository contains the GPL-3.0-or-later client plugin and browser extension. The CatGIFs API and website are separate projects. CatGIFs is not affiliated with Discord, Vencord, Equicord, Vesktop, or Equibop.
+
+## Credits
+
+- [Marni](https://github.com/ItzMarni) created CatGIFs and the original plugin.
+- [aboveproof](https://github.com/aboveproof) continued development, added new features and client support, and maintains the documentation and browser uploader.
+- The [Vencord](https://github.com/Vendicated/Vencord) and [Equicord](https://github.com/Equicord/Equicord) contributors maintain the client mods and APIs this plugin uses.

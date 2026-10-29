@@ -3,13 +3,14 @@
 import * as DataStore from '@api/DataStore';
 import { definePluginSettings } from '@api/Settings';
 import { Button } from '@components/Button';
-import definePlugin, { OptionType } from '@utils/types';
+import { sleep } from '@utils/misc';
+import { OptionType } from '@utils/types';
 import { React } from '@webpack/common';
 
 import { apiBase, uploadTokenKey } from './api';
 
 const DEFAULT_ENDPOINT = 'https://catgifs.marni.cc';
-const API_ENDPOINT_SETTING = ['apiEndpoint'] as const;
+const API_ENDPOINT_SETTING = ['apiEndpoint'] satisfies ('apiEndpoint')[];
 
 export const settings = definePluginSettings({
   keepPickerOpen: {
@@ -21,7 +22,7 @@ export const settings = definePluginSettings({
     type: OptionType.STRING,
     displayName: 'API Base URL',
     description:
-      'CatGIFs server URL, such as https://catgifs.marni.cc or http://localhost:8080. Restart Equibop after changing this.',
+      'CatGIFs server URL, such as https://catgifs.marni.cc or http://localhost:8080. Restart the client after changing this.',
     default: DEFAULT_ENDPOINT,
     restartNeeded: true,
   },
@@ -73,6 +74,9 @@ export function ConnectionSettings() {
   const [connected, setConnected] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState('');
+  const connectionAbort = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => () => connectionAbort.current?.abort(), []);
 
   React.useEffect(() => {
     setConnected(false);
@@ -90,11 +94,15 @@ export function ConnectionSettings() {
 
     setBusy(true);
     setMessage('Starting secure connection…');
+    connectionAbort.current?.abort();
+    const controller = new AbortController();
+    connectionAbort.current = controller;
     try {
       const start = await fetch(new URL('/api/equicord/device', base), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_name: 'Equicord Discord client' }),
+        body: JSON.stringify({ device_name: 'Discord client' }),
+        signal: controller.signal,
       });
       if (!start.ok) {
         throw new Error(
@@ -113,11 +121,13 @@ export function ConnectionSettings() {
       const expiresAt = Date.now() + grant.expires_in * 1000;
       let interval = Math.max(5, grant.interval) * 1000;
       while (Date.now() < expiresAt) {
-        await new Promise((resolve) => setTimeout(resolve, interval));
+        await sleep(interval);
+        if (controller.signal.aborted) return;
         const response = await fetch(new URL('/api/equicord/token', base), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ device_code: grant.device_code }),
+          signal: controller.signal,
         });
         const payload: unknown = await response.json();
         const result: Record<string, unknown> = isObject(payload) ? payload : {};
@@ -134,16 +144,20 @@ export function ConnectionSettings() {
         }
         if (result.status === 'expired') throw new Error('That connection code expired. Start again to get a new one.');
         if (result.status === 'access_denied')
-          throw new Error('The connection was denied or the account is no longer active.');
+          throw new Error('CatGIFs denied this connection, or the account is inactive.');
         if (result.status === 'device_limit_reached')
-          throw new Error('This account already has the maximum number of connected devices.');
+          throw new Error('This account has reached its connected device limit.');
         throw new Error(typeof result.error === 'string' ? result.error : 'Could not finish connecting to CatGIFs.');
       }
       throw new Error('That connection code expired. Start again to get a new one.');
     } catch (error) {
+      if (controller.signal.aborted) return;
       setMessage(error instanceof Error ? error.message : 'Could not connect to CatGIFs.');
     } finally {
-      setBusy(false);
+      if (connectionAbort.current === controller) {
+        connectionAbort.current = null;
+        if (!controller.signal.aborted) setBusy(false);
+      }
     }
   };
 
@@ -162,8 +176,8 @@ export function ConnectionSettings() {
     <div className="catgifs-connection-setting">
       <p>
         {connected
-          ? 'This Equicord installation is connected to CatGIFs.'
-          : 'Connect this Equicord installation to upload GIFs from Discord. Approve it in the browser; no API key is shown or pasted.'}
+          ? 'This client is connected to CatGIFs.'
+          : 'Connect this client to upload GIFs from Discord. Approve it in the browser; no API key is shown or pasted.'}
       </p>
       <div className="catgifs-connection-actions">
         {connected ? (

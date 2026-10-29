@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Button } from '@components/Button';
+import { copyWithToast } from '@utils/discord';
 import { classes } from '@utils/misc';
 import { findComponentByCodeLazy, findCssClassesLazy } from '@webpack';
-import { ExpressionPickerStore, React } from '@webpack/common';
+import { ContextMenuApi, ExpressionPickerStore, Menu, React } from '@webpack/common';
 import type { ReactNode } from 'react';
 
-import { getEndpoint, normalizeGifUrl } from './api';
+import { apiBase, normalizeGifUrl } from './api';
 import { settings } from './ConnectionSettings';
 
 const RESULT_WIDTH = 195;
 const RESULT_GAP = 12;
 const MAX_COLUMNS = 6;
-const PICKER_SETTINGS: ('apiEndpoint' | 'keepPickerOpen')[] = ['apiEndpoint', 'keepPickerOpen'];
+const PICKER_SETTINGS = ['apiEndpoint', 'keepPickerOpen'] satisfies ('apiEndpoint' | 'keepPickerOpen')[];
 const ScrollerClasses = findCssClassesLazy('scrollbarGutterStable', 'thin', 'scrollerBase', 'fade');
 
 export interface ExpressionPickerTabProps {
@@ -32,6 +33,14 @@ interface ManaSearchBarProps {
   onClear?: () => void;
 }
 
+interface PositionedGif {
+  url: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 const ManaSearchBar = findComponentByCodeLazy<ManaSearchBarProps>('.MagnifyingGlassIcon,onClear');
 
 function gifName(url: string) {
@@ -39,14 +48,6 @@ function gifName(url: string) {
     .slice(url.lastIndexOf('/') + 1)
     .replace(/\.gif$/i, '')
     .replace(/[-_]/g, ' ');
-}
-
-interface PositionedGif {
-  url: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
 }
 
 export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: string }) => void }) {
@@ -64,7 +65,7 @@ export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: stri
   const masonryRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const endpoint = getEndpoint(apiEndpoint);
+    const endpoint = apiBase(apiEndpoint);
     setLoading(true);
 
     if (!endpoint) {
@@ -219,6 +220,17 @@ export function CatGIFsPicker({ onSelectGIF }: { onSelectGIF: (item: { url: stri
                   if (event.button === 0) event.preventDefault();
                 }}
                 onClick={() => selectGIF(url)}
+                onContextMenu={(event) =>
+                  ContextMenuApi.openContextMenu(event, () => (
+                    <Menu.Menu navId="catgifs-item" onClose={ContextMenuApi.closeContextMenu} aria-label="CatGIF options">
+                      <Menu.MenuItem
+                        id="catgifs-copy-link"
+                        label="Copy GIF Link"
+                        action={() => copyWithToast(url, 'GIF link copied to clipboard.')}
+                      />
+                    </Menu.Menu>
+                  ))
+                }
               >
                 <img
                   src={url}

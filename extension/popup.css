@@ -1,0 +1,183 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+:root {
+    color-scheme: dark;
+    --accent: #8b97ff;
+    --accent-fg: #0e0f12;
+    --bg: #0e0f12;
+    --fg: #eceef2;
+    --good: #5fd392;
+    --line: #272a31;
+    --muted: #9a9fab;
+    --surface: #17181d;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    width: 360px;
+    margin: 0;
+    background: var(--bg);
+    font-size: 14px;
+}
+
+main {
+    padding: 20px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 56px;
+}
+
+.brand-icon {
+    display: block;
+    flex: none;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+h1,
+.brand-copy p,
+.status-shell p,
+.hint {
+    margin: 0;
+}
+
+h1 {
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.brand-copy p {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.status-shell {
+    margin: 20px 0 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--surface);
+}
+
+.status-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fg);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.status-shell[data-state="connected"] .status-heading {
+    color: var(--good);
+}
+
+.status-shell[data-state="connected"] .status-dot {
+    background: var(--good);
+}
+
+.status-shell[data-state="pending"] .status-heading,
+.status-shell[data-state="loading"] .status-heading {
+    color: var(--accent);
+}
+
+.status-shell[data-state="pending"] .status-dot,
+.status-shell[data-state="loading"] .status-dot {
+    background: var(--accent);
+}
+
+.status-shell p {
+    margin-top: 8px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.actions {
+    display: grid;
+    gap: 8px;
+}
+
+button {
+    min-height: 36px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 9px 14px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+button:hover {
+    background: #a4adff;
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+button.secondary {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--fg);
+}
+
+button.secondary:hover {
+    border-color: #3a3e49;
+    background: #1d1f25;
+}
+
+.hint {
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.hint strong {
+    color: var(--fg);
+    font-weight: 600;
+}
+
+[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button {
+        transition: none;
+    }
+}
