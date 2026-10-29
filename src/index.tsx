@@ -3,32 +3,46 @@
 import type { NavContextMenuPatchCallback } from '@api/ContextMenu';
 import * as DataStore from '@api/DataStore';
 import ErrorBoundary from '@components/ErrorBoundary';
-import definePlugin, { PluginNative } from '@utils/types';
+import { Logger } from '@utils/Logger';
+import definePlugin, { PluginNative, ReporterTestable } from '@utils/types';
+import * as WebpackCommon from '@webpack/common';
 import { Menu, showToast } from '@webpack/common';
 import type { ComponentType } from 'react';
 
 import { apiBase, uploadTokenKey } from './api';
-import { ConnectionSettings, settings } from './ConnectionSettings';
+import { settings } from './ConnectionSettings';
 import { CatGIFsPicker, type ExpressionPickerTabProps } from './GifPicker';
 import managedStyle from './styles.css?managed';
 
 const CATGIFS_VIEW = 'catgifs';
 const Native = VencordNative.pluginHelpers.CatGIFs as PluginNative<typeof import('./native')> | undefined;
+const logger = new Logger('CatGIFs');
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+interface ModernToastOptions {
+  text: string;
+  variant: 'success' | 'critical';
+}
+
+type CrossClientShowToast =
+  | ((message: string, type: 'success' | 'failure') => void)
+  | ((options: ModernToastOptions) => void);
+
+const crossClientShowToast: CrossClientShowToast = showToast;
+
 async function uploadGif(urlValue: string) {
   try {
     const base = apiBase(settings.store.apiEndpoint);
     if (!base) {
-      showToast('Set API Base URL to catgifs.marni.cc or a localhost address first.', 'failure');
+      notifyUpload('Set API Base URL to catgifs.marni.cc or a localhost address first.', 'failure');
       return;
     }
     const token = await DataStore.get<string>(uploadTokenKey(base));
     if (!token) {
-      showToast('Connect CatGIFs in Equicord plugin settings first.', 'failure');
+      notifyUpload('Connect CatGIFs in Equicord plugin settings first.', 'failure');
       return;
     }
     const source = new URL(urlValue);
@@ -39,10 +53,11 @@ async function uploadGif(urlValue: string) {
     }
     if (!Native?.downloadGifMedia) {
       throw new Error(
-        'This Equicord process has no CatGIFs native helper loaded. Fully quit and launch the freshly built Equibop client.',
+        'This client has no CatGIFs native helper. Quit Discord and launch the new desktop build.',
       );
     }
     const media = await Native.downloadGifMedia(source.href);
+    if (!media.success) throw new Error(media.error);
     let fileName = media.fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'discord-gif.gif';
     if (!/\.gif$/i.test(fileName) && media.contentType === 'image/gif') {
       fileName += '.gif';
@@ -59,7 +74,7 @@ async function uploadGif(urlValue: string) {
     const payload: unknown = await response.json().catch(() => ({}));
     const result: Record<string, unknown> = isObject(payload) ? payload : {};
     if (!response.ok) {
-      console.error('[CatGIFs] Upload API rejected the downloaded media', {
+      logger.error('Upload API rejected the downloaded media', {
         status: response.status,
         error: result.error,
         fileName,
@@ -74,25 +89,31 @@ async function uploadGif(urlValue: string) {
       }
       return;
     }
-    notifyUpload('GIF submitted to CatGIFs for review!', 'success');
+    notifyUpload('GIF submitted to CatGIFs for review.', 'success');
   } catch (error) {
-    console.error('[CatGIFs] GIF upload failed:', error);
+    logger.error('GIF upload failed:', error);
     notifyUpload(error instanceof Error ? error.message : 'Could not upload this GIF.', 'failure');
   }
 }
 
 function notifyUpload(message: string, type: 'success' | 'failure') {
   try {
-    showToast(message, type);
+    if ('Toasts' in WebpackCommon) {
+      (crossClientShowToast as (message: string, type: 'success' | 'failure') => void)(message, type);
+    } else {
+      (crossClientShowToast as (options: ModernToastOptions) => void)({
+        text: message,
+        variant: type === 'success' ? 'success' : 'critical',
+      });
+    }
   } catch (error) {
-    console.error('[CatGIFs] Could not show upload notification:', error);
+    logger.error('Could not show upload notification:', error);
   }
 }
 
 function getMediaSource(props: Record<string, unknown> | undefined): string | null {
   if (!props) return null;
 
-  // Direct url / src properties (used in gif-picker, image-context, etc.)
   for (const key of ['src', 'itemSrc', 'itemHref', 'url', 'href']) {
     const val = props[key];
     if (typeof val === 'string' && /^https?:\/\//i.test(val)) {
@@ -100,34 +121,12 @@ function getMediaSource(props: Record<string, unknown> | undefined): string | nu
     }
   }
 
-  // Direct attachment (message context on attachment)
   const attachment = props.attachment as { proxy_url?: string; url?: string } | undefined;
   if (attachment) {
     const url = attachment.proxy_url || attachment.url;
     if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
   }
 
-  // Target element (e.g. clicked <img> or <video> tag)
-  const target = props.target as {
-    classList?: { contains: (cls: string) => boolean };
-    src?: unknown;
-    closest?: (selector: string) => { src?: unknown; currentSrc?: unknown } | null;
-    querySelector?: (selector: string) => { src?: unknown; currentSrc?: unknown } | null;
-  } | undefined;
-
-  if (target?.classList?.contains('emoji')) return null;
-
-  if (typeof target?.src === 'string' && /^https?:\/\//i.test(target.src)) {
-    return target.src;
-  }
-
-  const mediaEl = target?.closest?.('img, video') || target?.querySelector?.('img, video');
-  const mediaSrc = mediaEl?.currentSrc || mediaEl?.src;
-  if (typeof mediaSrc === 'string' && /^https?:\/\//i.test(mediaSrc)) {
-    return mediaSrc;
-  }
-
-  // Message attachments & embeds (when right-clicking a message)
   const message = props.message as {
     attachments?: Array<{ proxy_url?: string; url?: string; content_type?: string }>;
     embeds?: Array<{
@@ -161,6 +160,7 @@ function getMediaSource(props: Record<string, unknown> | undefined): string | nu
 }
 
 const uploadContextMenuPatch: NavContextMenuPatchCallback = (children, props?: Record<string, unknown>) => {
+  if (!Native?.downloadGifMedia) return;
   const source = getMediaSource(props);
   if (!source) return;
 
@@ -184,6 +184,7 @@ export default definePlugin({
   authors: [{ name: 'marni_', id: 282905846457827330n }],
   tags: ['Chat', 'Media'],
   enabledByDefault: true,
+  reporterTestable: ReporterTestable.Patches,
   settings,
   managedStyle,
   contextMenus: {
@@ -196,13 +197,16 @@ export default definePlugin({
   patches: [
     {
       find: '#{intl::EXPRESSION_PICKER_CATEGORIES_A11Y_LABEL}',
+      group: true,
       replacement: [
         {
-          match: /(children:\[[^[\]]{0,80},)(?=\i&&\i&&\(0,\i\.jsx\)\((\i),\{id:\i\.\i,"aria-controls":\i\.\i,"aria-selected":(\i)===\i\.\i\.SOUNDBOARD)/,
+          match:
+            /(children:\[[^[\]]{0,80},)(?=\i&&\i&&\(0,\i\.jsx\)\((\i),\{id:\i\.\i,"aria-controls":\i\.\i,"aria-selected":(\i)===\i\.\i\.SOUNDBOARD)/,
           replace: '$1$self.renderCatTab($2,$3),',
         },
         {
-          match: /(\i)===\i\.\i\.GIF&&\i\?\(0,\i\.jsx\)\(\i(?:\.\i)?,\{onSelectGIF:(\i),hideFavorites:\i,persistSearch:!0\}\):null,/,
+          match:
+            /(\i)===\i\.\i\.GIF&&\i\?\(0,\i\.jsx\)\(\i(?:\.\i)?,\{(?=[^}]{0,150}onSelectGIF:(\i))[^}]{0,150}\}\):null,/,
           replace: '$&$1==="catgifs"?$self.renderCatGIFsPicker($2):null,',
         },
       ],

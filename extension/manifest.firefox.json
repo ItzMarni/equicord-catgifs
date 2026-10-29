@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "CatGIFs Uploader",
+  "version": "1.0.0",
+  "description": "Upload images to CatGIFs from the browser context menu.",
+  "icons": {
+    "16": "icons/catgifs-16.png",
+    "32": "icons/catgifs-32.png",
+    "48": "icons/catgifs-48.png",
+    "128": "icons/catgifs-128.png"
+  },
+  "permissions": [
+    "alarms",
+    "contextMenus",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "action": {
+    "default_title": "CatGIFs Uploader",
+    "default_icon": {
+      "16": "icons/catgifs-16.png",
+      "32": "icons/catgifs-32.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "catgifs-uploader@marni.cc",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "authenticationInfo",
+          "websiteContent"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}

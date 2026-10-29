@@ -1,0 +1,45 @@
+<!--
+  Vencord, a Discord client mod
+  Copyright (c) 2026 Vendicated and contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CatGIFs Uploader</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header class="brand">
+        <img
+          class="brand-icon"
+          src="icons/catgifs-512.png"
+          alt=""
+          width="56"
+          height="56"
+        >
+        <div class="brand-copy">
+          <h1>CatGIFs</h1>
+          <p>Browser uploader</p>
+        </div>
+      </header>
+      <section id="status-shell" class="status-shell" data-state="loading">
+        <div class="status-heading">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-label">Checking connection</span>
+        </div>
+        <p id="status" role="status">Reading your local extension status.</p>
+      </section>
+      <div class="actions">
+        <button id="connect" type="button">Connect to CatGIFs</button>
+        <button id="manage" class="secondary" type="button" hidden>Manage devices</button>
+        <button id="disconnect" class="secondary" type="button" hidden>Disconnect</button>
+      </div>
+      <p class="hint">Right-click any image and choose <strong>Upload to CatGIFs</strong>. CatGIFs adds it to the review queue.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
