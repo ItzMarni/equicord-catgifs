@@ -13,6 +13,7 @@ import { apiBase, uploadTokenKey } from './api';
 import { settings } from './ConnectionSettings';
 import { CatGIFsPicker, type ExpressionPickerTabProps } from './GifPicker';
 import managedStyle from './styles.css?managed';
+import { downloadWebMedia } from './web';
 
 const CATGIFS_VIEW = 'catgifs';
 const Native = VencordNative.pluginHelpers.CatGIFs as PluginNative<typeof import('./native')> | undefined;
@@ -42,21 +43,20 @@ async function uploadGif(urlValue: string) {
     }
     const token = await DataStore.get<string>(uploadTokenKey(base));
     if (!token) {
-      notifyUpload('Connect CatGIFs in Equicord plugin settings first.', 'failure');
+      notifyUpload('Connect CatGIFs in plugin settings first.', 'failure');
       return;
     }
     const source = new URL(urlValue);
-    if (source.protocol !== 'https:' && source.protocol !== 'http:')
+    if ((source.protocol !== 'https:' && source.protocol !== 'http:') || source.username || source.password)
       throw new Error('This image URL is not supported.');
     if (/\.gif$/i.test(source.pathname) && source.searchParams.get('format') === 'webp') {
       source.searchParams.set('format', 'gif');
     }
-    if (!Native?.downloadGifMedia) {
-      throw new Error(
-        'This client has no CatGIFs native helper. Quit Discord and launch the new desktop build.',
-      );
-    }
-    const media = await Native.downloadGifMedia(source.href);
+    const media = Native?.downloadGifMedia
+      ? await Native.downloadGifMedia(source.href)
+      : IS_WEB
+        ? await downloadWebMedia(source)
+        : { success: false as const, error: 'This client has no CatGIFs media downloader.' };
     if (!media.success) throw new Error(media.error);
     let fileName = media.fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'discord-gif.gif';
     if (!/\.gif$/i.test(fileName) && media.contentType === 'image/gif') {
@@ -160,7 +160,7 @@ function getMediaSource(props: Record<string, unknown> | undefined): string | nu
 }
 
 const uploadContextMenuPatch: NavContextMenuPatchCallback = (children, props?: Record<string, unknown>) => {
-  if (!Native?.downloadGifMedia) return;
+  if (!Native?.downloadGifMedia && !IS_WEB) return;
   const source = getMediaSource(props);
   if (!source) return;
 

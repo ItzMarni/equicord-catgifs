@@ -6,7 +6,7 @@ CatGIFs adds a CatGIFs tab to Discord's GIF picker. You can search the library, 
 
 - Search and send CatGIFs from Discord's GIF picker.
 - Right-click a CatGIFs result and choose **Copy GIF Link**.
-- Submit a GIF from Discord on desktop builds.
+- Submit a GIF from Discord on supported client builds.
 - Submit images from Chrome, Edge, or Firefox with the browser uploader.
 
 ![Browsing CatGIFs in Discord](assets/catgifs-picker.gif)
@@ -17,17 +17,18 @@ CatGIFs adds a CatGIFs tab to Discord's GIF picker. You can search the library, 
 | --- | --- | --- |
 | Equicord or Vencord injected into Discord Desktop | Yes | Yes |
 | Equibop or Vesktop using a local `dist` build | Yes | Yes |
-| Equicord or Vencord browser extension | Yes | No. Use the CatGIFs browser uploader. |
-| Userscript or standalone web build | Yes | No. Use the CatGIFs browser uploader. |
+| Equicord or Vencord browser extension | Yes | Yes |
+| Userscript | Yes | Yes |
+| Standalone web build | Yes | Yes, when the image host allows browser access. |
 | Discord without Equicord or Vencord | No | No |
 
-The web builds hide **Upload to CatGIFs** because they cannot load the native download helper. Browsing and **Copy GIF Link** still work. The plugin does not require custom edits to Equicord or Vencord outside `src/userplugins/catgifs`.
+Desktop builds use the native media downloader. Browser extension builds add a background download bridge, and the userscript uses its privileged request helper. Standalone web builds use the browser directly, so the image host must allow cross-origin requests. The build scripts apply the browser bridge automatically.
 
 ## Connect CatGIFs
 
 Open CatGIFs in the plugin settings and select **Connect to CatGIFs**. Approve the device in the browser window. CatGIFs stores the device token in the client's DataStore.
 
-Desktop builds add **Upload to CatGIFs** to Discord's GIF context menu. The server places each upload in the review queue.
+Supported client builds add **Upload to CatGIFs** to Discord's GIF context menu. The server places each upload in the review queue.
 
 ![Uploading a GIF from Discord](assets/favorite-gif-upload.gif)
 
@@ -41,7 +42,7 @@ The extension includes separate Manifest V3 packages for Chromium and Firefox. S
 
 You need Git, Node.js 22 or newer, and Corepack. Clone this repository next to an Equicord or Vencord source checkout. Install the client checkout's dependencies before running the CatGIFs build script.
 
-The scripts copy every file in `src` to `src/userplugins/catgifs`. They accept these targets:
+The scripts copy every file in `src` to `src/userplugins/catgifs`. Web builds also add the download bridge to the client's Chromium and Firefox extension files. The bridge requests access only to CatGIFs, Discord's media hosts, Tenor, and Giphy. The scripts accept these targets:
 
 - `desktop` builds Discord Desktop and Vesktop/Equibop bundles. This is the default.
 - `web` builds the client mod's browser extensions and userscript.

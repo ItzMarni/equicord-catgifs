@@ -48,6 +48,8 @@ if ($Target -ne "web") {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 if ($Target -ne "desktop") {
+    node (Join-Path $ScriptDir "scripts\patch-web-client.mjs") $ClientDir
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     corepack pnpm --config.verify-deps-before-run=false buildWeb --dev
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }

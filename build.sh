@@ -27,5 +27,6 @@ if [[ "$TARGET" != "web" ]]; then
     corepack pnpm --config.verify-deps-before-run=false build --dev
 fi
 if [[ "$TARGET" != "desktop" ]]; then
+    node "$SCRIPT_DIR/scripts/patch-web-client.mjs" "$CLIENT_DIR"
     corepack pnpm --config.verify-deps-before-run=false buildWeb --dev
 fi
