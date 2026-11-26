@@ -114,17 +114,38 @@ function notifyUpload(message: string, type: 'success' | 'failure') {
 function getMediaSource(props: Record<string, unknown> | undefined): string | null {
   if (!props) return null;
 
-  for (const key of ['src', 'itemSrc', 'itemHref', 'url', 'href']) {
-    const val = props[key];
-    if (typeof val === 'string' && /^https?:\/\//i.test(val)) {
-      return val;
+  // Provider share pages are HTML and may reject downloads with HTTP 403.
+  // Use the actual media from the picker, clicked element, or message embed.
+  const mediaUrl = (value: unknown): string | null => {
+    if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return null;
+    try {
+      const url = new URL(value);
+      if (/^(?:www\.)?(?:klipy|tenor|giphy)\.com$/i.test(url.hostname)) return null;
+      return url.href;
+    } catch {
+      return null;
     }
+  };
+
+  const pickerItems = [props, props.gif, props.item].filter(isObject);
+  for (const item of pickerItems) {
+    for (const key of ['gif_src', 'gifSrc', 'src', 'itemSrc', 'itemHref', 'url', 'href', 'link']) {
+      const url = mediaUrl(item[key]);
+      if (url) return url;
+    }
+  }
+
+  const target = props.target instanceof Element ? props.target : null;
+  const mediaElement = target?.closest('img, video') ?? target?.querySelector('img, video');
+  if (mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement) {
+    const url = mediaUrl(mediaElement.currentSrc || mediaElement.src);
+    if (url) return url;
   }
 
   const attachment = props.attachment as { proxy_url?: string; url?: string } | undefined;
   if (attachment) {
-    const url = attachment.proxy_url || attachment.url;
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+    const url = mediaUrl(attachment.proxy_url) || mediaUrl(attachment.url);
+    if (url) return url;
   }
 
   const message = props.message as {
@@ -142,16 +163,16 @@ function getMediaSource(props: Record<string, unknown> | undefined): string | nu
         a.content_type?.includes('gif') || /\.gif([?#]|$)/i.test(a.url || '') || /\.gif([?#]|$)/i.test(a.proxy_url || '')
       ) ?? message.attachments[0];
 
-      const url = gifAttachment?.proxy_url || gifAttachment?.url;
-      if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+      const url = mediaUrl(gifAttachment?.proxy_url) || mediaUrl(gifAttachment?.url);
+      if (url) return url;
     }
 
     if (Array.isArray(message.embeds)) {
       for (const embed of message.embeds) {
         const img = embed.image || embed.thumbnail;
         const video = embed.video;
-        const url = img?.proxyURL || img?.url || video?.proxyURL || video?.url;
-        if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url;
+        const url = mediaUrl(img?.proxyURL) || mediaUrl(img?.url) || mediaUrl(video?.proxyURL) || mediaUrl(video?.url);
+        if (url) return url;
       }
     }
   }

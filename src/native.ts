@@ -14,7 +14,10 @@ const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT = 30_000;
 const apiEndpoint = RendererSettings.store.plugins?.CatGIFs?.apiEndpoint ?? DEFAULT_ENDPOINT;
 const endpoint = apiBase(apiEndpoint) ?? new URL(DEFAULT_ENDPOINT);
-const blockedAddresses = new BlockList();
+// IPv4 addresses also match IPv4-mapped IPv6 subnets in Node's BlockList.
+// Keep the lists separate so blocking ::ffff:0:0/96 does not block all IPv4 hosts.
+const blockedIpv4Addresses = new BlockList();
+const blockedIpv6Addresses = new BlockList();
 
 CspPolicies['catgifs.marni.cc'] = ImageSrc;
 CspPolicies[endpoint.host] = ImageSrc;
@@ -35,7 +38,7 @@ for (const [network, prefix] of [
   ['224.0.0.0', 4],
   ['240.0.0.0', 4],
 ] as const) {
-  blockedAddresses.addSubnet(network, prefix, 'ipv4');
+  blockedIpv4Addresses.addSubnet(network, prefix, 'ipv4');
 }
 
 for (const [network, prefix] of [
@@ -48,10 +51,16 @@ for (const [network, prefix] of [
   ['fe80::', 10],
   ['ff00::', 8],
 ] as const) {
-  blockedAddresses.addSubnet(network, prefix, 'ipv6');
+  blockedIpv6Addresses.addSubnet(network, prefix, 'ipv6');
 }
 
 class MediaDownloadError extends Error {}
+
+function isBlockedAddress(address: string, family: number): boolean {
+  return family === 4
+    ? blockedIpv4Addresses.check(address, 'ipv4')
+    : blockedIpv6Addresses.check(address, 'ipv6');
+}
 
 function parseMediaUrl(value: unknown): URL {
   if (typeof value !== 'string' || value.length > 8192) {
@@ -78,7 +87,7 @@ async function assertPublicUrl(url: URL) {
 
   const family = isIP(hostname);
   if (family) {
-    if (blockedAddresses.check(hostname, family === 4 ? 'ipv4' : 'ipv6')) {
+    if (isBlockedAddress(hostname, family)) {
       throw new MediaDownloadError('Private network media links cannot be uploaded.');
     }
     return;
@@ -92,7 +101,7 @@ async function assertPublicUrl(url: URL) {
   }
   if (
     addresses.length === 0 ||
-    addresses.some(({ address, family }) => blockedAddresses.check(address, family === 4 ? 'ipv4' : 'ipv6'))
+    addresses.some(({ address, family }) => isBlockedAddress(address, family))
   ) {
     throw new MediaDownloadError('Private network media links cannot be uploaded.');
   }
